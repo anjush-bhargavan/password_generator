@@ -20,13 +20,22 @@ func NewPasswordHandler(pu service.PasswordService) PasswordHandler {
 }
 
 func (h *PasswordHandler) GeneratePassword(c *gin.Context) {
-	lengthStr := c.DefaultQuery("length", "12")
-	length, err := strconv.Atoi(lengthStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid length"})
-		return
-	}
+    length, err := strconv.Atoi(c.Query("length"))
+    if err != nil || length <= 0 {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid password length"})
+        return
+    }
 
-	password := h.Passwordservice.GeneratePassword(length)
-	c.JSON(http.StatusOK, gin.H{"password": password})
+    includeUppercase := c.Query("uppercase") == "true"
+    includeLowercase := c.Query("lowercase") == "true"
+    includeNumbers := c.Query("numbers") == "true"
+    includeSpecial := c.Query("special") == "true"
+
+    password, err := h.Passwordservice.GeneratePassword(length, includeUppercase, includeLowercase, includeNumbers, includeSpecial)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate password"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"password": password})
 }

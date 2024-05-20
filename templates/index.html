@@ -19,7 +19,7 @@
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             text-align: center;
-            width: 300px;
+            width: 350px;
         }
         h1 {
             color: #333;
@@ -30,13 +30,19 @@
             margin-bottom: 10px;
             color: #666;
         }
-        input[type="number"] {
-            width: 100%;
-            padding: 10px;
+        .options {
+            display: flex;
+            justify-content: space-around;
             margin-bottom: 20px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            box-sizing: border-box;
+        }
+        .options label {
+            display: flex;
+            align-items: center;
+            color: #666;
+        }
+        input[type="number"] {
+            margin-bottom: 20px;
+            width: 100%;
         }
         button {
             background: #6a11cb;
@@ -77,21 +83,93 @@
         .copy-button:hover {
             background: #2575fc;
         }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .stored-passwords {
+            margin-top: 20px;
+        }
+        .stored-passwords h2 {
+            margin-bottom: 10px;
+        }
+        .stored-password {
+            background: #e0e0e0;
+            padding: 5px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
     </style>
     <script>
         async function generatePassword() {
             const length = document.getElementById("length").value;
-            const response = await fetch(`/generate-password?length=${length}`);
+            const includeUppercase = document.getElementById("uppercase").checked;
+            const includeLowercase = document.getElementById("lowercase").checked;
+            const includeNumbers = document.getElementById("numbers").checked;
+            const includeSpecial = document.getElementById("special").checked;
+            const errorElement = document.getElementById("error");
+
+            if (!length || length < 1) {
+                errorElement.textContent = "Please enter a valid password length.";
+                return;
+            }
+
+            errorElement.textContent = "";
+
+            const response = await fetch(`/generate-password?length=${length}&uppercase=${includeUppercase}&lowercase=${includeLowercase}&numbers=${includeNumbers}&special=${includeSpecial}`);
             const data = await response.json();
-            document.getElementById("password").textContent = data.password;
+            document.getElementById("generated-password").textContent = data.password;
         }
 
         function copyPassword() {
-            const password = document.getElementById("password").textContent;
+            const password = document.getElementById("generated-password").textContent;
             navigator.clipboard.writeText(password).then(() => {
                 alert('Password copied to clipboard!');
             });
         }
+
+        function storePassword() {
+            const password = document.getElementById("generated-password").textContent;
+            if (!password) return;
+
+            const storedPasswords = JSON.parse(localStorage.getItem('storedPasswords')) || [];
+            storedPasswords.push(password);
+            localStorage.setItem('storedPasswords', JSON.stringify(storedPasswords));
+            displayStoredPasswords();
+        }
+
+        function displayStoredPasswords() {
+            const storedPasswords = JSON.parse(localStorage.getItem('storedPasswords')) || [];
+            const storedPasswordsContainer = document.getElementById("stored-passwords");
+            storedPasswordsContainer.innerHTML = '';
+
+            storedPasswords.forEach(password => {
+                const passwordElement = document.createElement('div');
+                passwordElement.className = 'stored-password';
+                passwordElement.textContent = password;
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => {
+                    deleteStoredPassword(password);
+                };
+
+                passwordElement.appendChild(deleteButton);
+                storedPasswordsContainer.appendChild(passwordElement);
+            });
+        }
+
+        function deleteStoredPassword(passwordToDelete) {
+            let storedPasswords = JSON.parse(localStorage.getItem('storedPasswords')) || [];
+            storedPasswords = storedPasswords.filter(password => password !== passwordToDelete);
+            localStorage.setItem('storedPasswords', JSON.stringify(storedPasswords));
+            displayStoredPasswords();
+        }
+
+        window.onload = displayStoredPasswords;
     </script>
 </head>
 <body>
@@ -99,10 +177,21 @@
         <h1>Password Generator</h1>
         <label for="length">Length:</label>
         <input type="number" id="length" value="12">
+        <div class="options">
+            <label><input type="checkbox" id="uppercase"> Uppercase</label>
+            <label><input type="checkbox" id="lowercase"> Lowercase</label>
+            <label><input type="checkbox" id="numbers"> Numbers</label>
+            <label><input type="checkbox" id="special"> Special</label>
+        </div>
         <button onclick="generatePassword()">Generate</button>
         <div class="password-box">
-            <span id="password"></span>
+            <span id="generated-password"></span>
             <button class="copy-button" onclick="copyPassword()">Copy</button>
+        </div>
+        <div class="error" id="error"></div>
+        <button onclick="storePassword()">Store Password</button>
+        <div class="stored-passwords" id="stored-passwords">
+            <h2>Stored Passwords</h2>
         </div>
     </div>
 </body>
